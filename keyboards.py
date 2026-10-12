@@ -2378,7 +2378,10 @@ def vpn_direct_multiselect_keyboard(items: list[dict], panel_id: int, selected: 
     for it in items:
         mark = "✅" if it["idx"] in selected else "⬜️"
         buttons.append([InlineKeyboardButton(
-            text=f"{mark} {it['label']}", callback_data=f"vpndirecttoggle|{panel_id}|{it['idx']}", style="secondary",
+            # 🐛 فیکس: تلگرام فقط primary/success/danger را به‌عنوان style می‌پذیرد؛ مقدار
+            # «secondary» باعث خطای «Invalid button style specified» می‌شد و با اولین
+            # انتخاب، کیبورد آپدیت نمی‌شد. دکمه‌ی انتخاب‌نشده بدون style (حالت پیش‌فرض) ارسال می‌شود.
+            text=f"{mark} {it['label']}", callback_data=f"vpndirecttoggle|{panel_id}|{it['idx']}",
         )])
     buttons.append([InlineKeyboardButton(
         text=f"✅ ذخیره ({len(selected)} انتخاب‌شده)", callback_data=f"vpndirectconfirm|{panel_id}", style="success",
