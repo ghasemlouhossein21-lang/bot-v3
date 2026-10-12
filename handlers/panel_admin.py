@@ -254,9 +254,8 @@ async def auto_fulfill_custom_via_panel(bot, user: dict, order_id: int, volume, 
         except Exception: logger.exception("failed to release custom order claim %s", order_id)
         return False
 
-    username = _service_username(user["telegram_id"])
-    ok, link, remote_service_id, data, msg = await panels.create_service(
-        panel, username, mapping["remote_ref"], volume_gb=volume, days=days,
+    ok, link, remote_service_id, data, msg = await _create_custom_service(
+        panel, user["telegram_id"], custom_name or order.get("custom_name"), mapping["remote_ref"], volume, days,
     )
     if not ok:
         try: db.set_custom_order_status(order_id, "paid")
@@ -325,6 +324,24 @@ def _service_username(telegram_id) -> str:
     prefix = re.sub(r"[^A-Za-z0-9_]+", "", raw_prefix) or "tg"
     code = secrets.randbelow(900000) + 100000
     return f"{prefix}_{code}"
+
+
+async def _create_custom_service(panel: dict, telegram_id, custom_name, remote_ref, volume_gb, days):
+    """ساخت سرویس سفارشی روی پنل با همان نامی که کاربر هنگام سفارش انتخاب کرده.
+
+    اگر نام معتبر نباشد یا پنل آن را نپذیرد (مثلاً تکراری/کوتاه‌تر از حداقل پنل)،
+    یک‌بار با نام پیش‌فرض (پیشوند + ۶ رقم، همان فرمت سایر سرویس‌ها) تلاش می‌شود.
+    خروجی: (ok, link, remote_service_id, data, msg)
+    """
+    name = str(custom_name or "").strip()
+    if name and _LATIN_NAME_RE.match(name):
+        result = await panels.create_service(panel, name, remote_ref, volume_gb=volume_gb, days=days)
+        if result[0]:
+            return result
+        logger.warning("ساخت سرویس سفارشی با نام انتخابی %r ناموفق بود (%s)؛ تلاش با نام پیش‌فرض", name, result[4])
+    return await panels.create_service(
+        panel, _service_username(telegram_id), remote_ref, volume_gb=volume_gb, days=days,
+    )
 
 @router.callback_query(F.data == "admin_vpn_panels")
 async def open_vpn_panel_types(callback: types.CallbackQuery):
@@ -1279,9 +1296,8 @@ async def panel_custom_pick(callback: types.CallbackQuery, state: FSMContext):
         return
 
     await callback.answer(f"⏳ در حال ساخت سرویس در {panels.panel_label(panel)}...")
-    username = _service_username(user["telegram_id"])
-    ok, link, remote_service_id, data, msg = await panels.create_service(
-        panel, username, chosen["ref"], volume_gb=order["volume_gb"], days=order["days"],
+    ok, link, remote_service_id, data, msg = await _create_custom_service(
+        panel, user["telegram_id"], order.get("custom_name"), chosen["ref"], order["volume_gb"], order["days"],
     )
     if not ok:
         await callback.message.answer(
