@@ -703,7 +703,7 @@ async def fulfill_free_test_directly(bot, message: types.Message, user: dict, pl
     ساخته و ارسال می‌شود."""
     # وقتی از یک callback صدا زده می‌شود، message.from_user خودِ ربات است؛ کاربر واقعی از from_user می‌آید.
     tg_user = from_user or message.from_user
-    if is_duplicate_action(f"freetestdirect_{tg_user.id}"):
+    if is_duplicate_action(f"freetestdirect_{tg_user.id}_{plan_key}"):
         await answer_rich(message, "\u26a0\ufe0f \u0627\u06cc\u0646 \u062f\u0631\u062e\u0648\u0627\u0633\u062a \u062f\u0631 \u062d\u0627\u0644 \u067e\u0631\u062f\u0627\u0632\u0634/\u062b\u0628\u062a\u200c\u0634\u062f\u0647 \u0627\u0633\u062a.")
         return
 
